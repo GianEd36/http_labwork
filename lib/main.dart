@@ -24,28 +24,17 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  late String island = 'island';
-  late String region = 'region';
-  late String provinces = 'provinces';
   final apiUrl = 'https://psgc.gitlab.io/api';
-
   List<Map<String, String>> regions = [];
-
-  //late String provinces;
-  void callAPI() async {
-    var url = Uri.parse('island-groups/');
-
-    var response = await http.get(url);
-    print(response.statusCode);
-    print(response.body);
-    print(response.headers);
-    island = response.body;
-    setState(() {});
-  }
+  List provinces = [];
+  bool isLoading = false;
+  bool isProvincesLoading = false;
 
   void loadRegions() async {
+    isLoading = true;
     var url = Uri.parse('${apiUrl}/regions/');
     var response = await http.get(url);
+    print("Regions status: ${response.statusCode}");
     if (response.statusCode == 200) {
       var result = jsonDecode(response.body) as List;
       //print(result[9]['regionName']);
@@ -54,33 +43,79 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     }
     setState(() {});
+    isLoading = false;
+  }
+
+  void loadProvinces(String regionCode) async {
+    var url = Uri.parse(
+      'https://psgc.gitlab.io/api/regions/$regionCode/provinces/',
+    );
+    var response = await http.get(url);
+    print("Provinces status: ${response.statusCode}");
+    if (response.statusCode == 200) {
+      provinces.clear();
+      var result = jsonDecode(response.body) as List;
+      //print(result[9]['regionName']);
+      result.forEach((item) {
+        provinces.add({'code': item['code'], 'name': item['name']});
+      });
+    }
+    setState(() {
+      isProvincesLoading = true;
+    });
   }
 
   @override
   void initState() {
     super.initState();
+
+    loadRegions();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('HTTPs')),
-      body: Column(
-        children: [
-          TextButton(onPressed: loadRegions, child: Text('Call api')),
-          Scrollbar(
-            child: DropdownMenu(
-              dropdownMenuEntries:
-                  regions.map((item) {
-                    return DropdownMenuEntry(
-                      value: item['code'],
-                      label: item['name'].toString(),
-                    );
-                  }).toList(),
-            ),
-          ),
-        ],
-      ),
+      body:
+          isLoading
+              ? Center(child: CircularProgressIndicator())
+              : Column(
+                children: [
+                  Scrollbar(
+                    child: DropdownMenu(
+                      onSelected: (value) {
+                        print(value);
+                        loadProvinces(value.toString());
+                        if (value != null) {
+                          loadProvinces(value.toString());
+                        }
+                      },
+                      dropdownMenuEntries:
+                          regions.map((item) {
+                            return DropdownMenuEntry(
+                              value: item['code'],
+                              label: item['name'].toString(),
+                            );
+                          }).toList(),
+                    ),
+                  ),
+                  if (isProvincesLoading)
+                    Scrollbar(
+                      child: DropdownMenu(
+                        onSelected: (value) {
+                          print(value);
+                        },
+                        dropdownMenuEntries:
+                            provinces.map((item) {
+                              return DropdownMenuEntry(
+                                value: item['code'],
+                                label: item['name'].toString(),
+                              );
+                            }).toList(),
+                      ),
+                    ),
+                ],
+              ),
     );
   }
 }
