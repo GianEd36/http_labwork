@@ -12,12 +12,15 @@ class HomeApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(home: HomeScreen());
+    return MaterialApp(
+      home: HomeScreen(),
+      debugShowCheckedModeBanner: false,
+    );
   }
 }
 
 class HomeScreen extends StatefulWidget {
-  HomeScreen({super.key});
+  const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -27,8 +30,15 @@ class _HomeScreenState extends State<HomeScreen> {
   final apiUrl = 'https://psgc.gitlab.io/api';
   List<Map<String, String>> regions = [];
   List provinces = [];
+  List cities = [];
+  //List municipalities = [];
+  List barangay = [];
+
   bool isLoading = false;
   bool isProvincesLoading = false;
+  bool isCitiesLoading = false;
+  //bool isMunicipalitiesLoading = false;
+  bool isBarangayLoading = false;
 
   void loadRegions() async {
     isLoading = true;
@@ -65,6 +75,48 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void loadCities(String provinceCode) async {
+    var url = Uri.parse(
+      'https://psgc.gitlab.io/api/provinces/$provinceCode/cities/',
+    );
+    var response = await http.get(url);
+    //Cities response body
+    print("Cities status: ${response.statusCode}");
+    if (response.statusCode == 200) {
+      provinces.clear();
+      var result = jsonDecode(response.body) as List;
+      //print(result[9]['regionName']);
+      result.forEach((item) {
+        //rename this to the list to be populated
+        cities.add({'code': item['code'], 'name': item['name']});
+      });
+    }
+    setState(() {
+      isCitiesLoading = true;
+    });
+  }
+
+  void loadBarangay(String cityCode) async {
+    var url = Uri.parse(
+      'https://psgc.gitlab.io/api/cities/$cityCode/barangays/',
+    );
+    var response = await http.get(url);
+    //Cities response body
+    print("Barangay status: ${response.statusCode}");
+    if (response.statusCode == 200) {
+      provinces.clear();
+      var result = jsonDecode(response.body) as List;
+      //print(result[9]['regionName']);
+      result.forEach((item) {
+        //rename this to the list to be populated
+        barangay.add({'code': item['code'], 'name': item['name']});
+      });
+    }
+    setState(() {
+      isBarangayLoading = true;
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -75,14 +127,21 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('HTTPs')),
+      appBar: AppBar(
+        title: Text('HTTPs'),
+        backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
+      ),
       body:
           isLoading
               ? Center(child: CircularProgressIndicator())
               : Column(
+                //crossAxisAlignment: CrossAxisAlignment.center,
+                //mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   Scrollbar(
                     child: DropdownMenu(
+                      width: 225,
                       onSelected: (value) {
                         print(value);
                         loadProvinces(value.toString());
@@ -102,11 +161,50 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (isProvincesLoading)
                     Scrollbar(
                       child: DropdownMenu(
+                        width: 225,
+                        onSelected: (value) {
+                          print(value);
+                          if (value != null) {
+                            loadCities(value.toString());
+                          }
+                        },
+                        dropdownMenuEntries:
+                            provinces.map((item) {
+                              return DropdownMenuEntry(
+                                value: item['code'],
+                                label: item['name'].toString(),
+                              );
+                            }).toList(),
+                      ),
+                    ),
+                    if (isCitiesLoading)
+                    Scrollbar(
+                      child: DropdownMenu(
+                        width: 225,
+                        onSelected: (value) {
+                          print(value);
+                          if (value != null) {
+                            loadBarangay(value.toString());
+                          }
+                        },
+                        dropdownMenuEntries:
+                            cities.map((item) {
+                              return DropdownMenuEntry(
+                                value: item['code'],
+                                label: item['name'].toString(),
+                              );
+                            }).toList(),
+                      ),
+                    ),
+                    if (isBarangayLoading)
+                    Scrollbar(
+                      child: DropdownMenu(
+                        width: 225,
                         onSelected: (value) {
                           print(value);
                         },
                         dropdownMenuEntries:
-                            provinces.map((item) {
+                            barangay.map((item) {
                               return DropdownMenuEntry(
                                 value: item['code'],
                                 label: item['name'].toString(),
